@@ -37,18 +37,12 @@ export async function createTodo(
 }
 
 
-export async function updateUserTodo(event: APIGatewayProxyEvent,
-  updateTodoRequest: UpdateTodoRequest) {
-const todoId = event.pathParameters.todoId;
-const userId = getUserId(event);
-
-if (!(await todoAccess.getUserTodos(userId))) {
-return false;
-}
-
-await todoAccess.updateUserTodo(todoId, userId, updateTodoRequest);
-
-return true;
+export async function updateTodo( event: APIGatewayProxyEvent ){
+  const todoId = event.pathParameters.todoId;
+  const userId = getUserId(event);
+  const updatedTodo: UpdateTodoRequest = JSON.parse(event.body);
+  const newTodo = await todoAccess.updateTodo(userId, todoId, updatedTodo);
+  return newTodo
 }
 
 export function getUploadUrl(todoId: string): string {

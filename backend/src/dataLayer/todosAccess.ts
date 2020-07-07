@@ -1,8 +1,11 @@
 import * as AWS  from 'aws-sdk'
+import * as AWSXRay from 'aws-xray-sdk';
 import { DocumentClient } from 'aws-sdk/clients/dynamodb'
 import { TodoItem } from '../models/TodoItem'
 import { TodoUpdate } from '../models/TodoUpdate'
 import { createLogger } from '../utils/logger'
+
+const XAWS = AWSXRay.captureAWS(AWS);
 
 const logger = createLogger('Todo DataAcess')
 import Jimp from 'jimp/es';
@@ -153,25 +156,48 @@ export class TodoAccess {
   }
 
 
-  async updateUserTodo(todoId, userId, updatedTodo) {
-    await this.docClient.update({
+  async updateTodo(userId: string, todoId: string, updatedTodo: TodoUpdate) {
+    var paramsUser = {
+      TableName: this.todosTable,
+      Key:{
+        "todoId": todoId        
+      }
+    };
+
+    const result = await this.docClient.get(paramsUser).promise();
+
+    const user = JSON.parse(JSON.stringify(result.Item))
+    const params2 = {
+      TableName: this.userTodosTable,
+      Key: {userId,
+      "createdAt": user.createdAt },
+      ExpressionAttributeNames: { "#N": "name" },
+      UpdateExpression: "set #N=:name, dueDate=:dueDate, done=:done",
+      ExpressionAttributeValues: {
+        ":name": updatedTodo.name,
+        ":dueDate": updatedTodo.dueDate,
+        ":done": updatedTodo.done
+    },
+    ReturnValues: "UPDATED_NEW"
+    };
+
+    await this.docClient.update(params2).promise();
+    const updtedTodo = await this.docClient.update({
         TableName: this.todosTable,
-        Key: {
-            todoId,
-            userId
-        },
-        UpdateExpression: 'set #name = :n, #dueDate = :due, #done = :d',
+        Key: {todoId },
+        ExpressionAttributeNames: { "#N": "name" },
+        UpdateExpression: "set #N=:name, dueDate=:dueDate, done=:done",
         ExpressionAttributeValues: {
-            ':n': updatedTodo.name,
-            ':due': updatedTodo.dueDate,
-            ':d': updatedTodo.done
-        },
-        ExpressionAttributeNames: {
-            '#name': 'name',
-            '#dueDate': 'dueDate',
-            '#done': 'done'
-        }
-    }).promise();
+          ":name": updatedTodo.name,
+          ":dueDate": updatedTodo.dueDate,
+          ":done": updatedTodo.done
+      },
+      ReturnValues: "UPDATED_NEW"
+    })
+    .promise();
+  return { Updated: updtedTodo };
+
+  
 }
 
   async processTodoImage(key: string) {
@@ -215,6 +241,6 @@ export class TodoAccess {
 
 function createDynamoDBClient() {
 
-  return new AWS.DynamoDB.DocumentClient({apiVersion: '2012-08-10'})
+  return new XAWS.DynamoDB.DocumentClient({apiVersion: '2012-08-10'})
 
 }
