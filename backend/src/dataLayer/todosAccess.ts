@@ -153,60 +153,26 @@ export class TodoAccess {
   }
 
 
-  async updateUserTodo(todo: TodoUpdate, todoId: string) {
-
-    var paramsUser = {
-      TableName: this.todosTable,
-      Key:{
-        "todoId": todoId        
-      }
-    };
-
-    const result = await this.docClient.get(paramsUser).promise();
-
-    const user = JSON.parse(JSON.stringify(result.Item))  
-
-    // Parameters setting for Updating User's Todo Item.
-    const params = {
-      TableName: this.userTodosTable,
-      Key:{
-        "userId": user.UserId,
-        "createdAt": user.createdAt
-      },
-      UpdateExpression: "set #name = :r, dueDate=:p, done=:a",
-      ExpressionAttributeNames:{
-        "#name": "name"
-      },       
-      ExpressionAttributeValues:{
-          ":r": todo.name,
-          ":p": todo.dueDate,
-          ":a": !result.Item.done
-      }
-    };
-
-
-    await this.docClient.update(params).promise();
-
-
-    const params2 = {
-      TableName: this.todosTable,
-      Key:{
-          "todoId": todoId
-      },
-      UpdateExpression: "set #name = :r, dueDate=:p, done=:a",
-      ExpressionAttributeNames:{
-        "#name": "name"
-      },       
-      ExpressionAttributeValues:{
-          ":r":todo.name,
-          ":p":todo.dueDate,
-          ":a":!result.Item.done
-      },
-    };
-
-    await this.docClient.update(params2).promise();        
-
-  }
+  async updateUserTodo(todoId, userId, updatedTodo) {
+    await this.docClient.update({
+        TableName: this.todosTable,
+        Key: {
+            todoId,
+            userId
+        },
+        UpdateExpression: 'set #name = :n, #dueDate = :due, #done = :d',
+        ExpressionAttributeValues: {
+            ':n': updatedTodo.name,
+            ':due': updatedTodo.dueDate,
+            ':d': updatedTodo.done
+        },
+        ExpressionAttributeNames: {
+            '#name': 'name',
+            '#dueDate': 'dueDate',
+            '#done': 'done'
+        }
+    }).promise();
+}
 
   async processTodoImage(key: string) {
 

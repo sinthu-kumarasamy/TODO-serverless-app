@@ -1,7 +1,9 @@
 import { TodoItem } from '../models/TodoItem'
 import { TodoAccess } from '../dataLayer/todosAccess'
 import { parseUserId } from '../auth/utils'
-import { TodoUpdate } from '../models/TodoUpdate'
+import { APIGatewayProxyEvent } from 'aws-lambda';
+import { UpdateTodoRequest } from '../requests/UpdateTodoRequest';
+import {getUserId} from '../lambda/utils';
 
 const todoAccess = new TodoAccess()
 
@@ -35,12 +37,18 @@ export async function createTodo(
 }
 
 
-export async function updateUserTodo(
-  todo: TodoUpdate,    
-  todoId: string,
-){
+export async function updateUserTodo(event: APIGatewayProxyEvent,
+  updateTodoRequest: UpdateTodoRequest) {
+const todoId = event.pathParameters.todoId;
+const userId = getUserId(event);
 
-  await todoAccess.updateUserTodo(todo,todoId)
+if (!(await todoAccess.getUserTodos(userId))) {
+return false;
+}
+
+await todoAccess.updateUserTodo(todoId, userId, updateTodoRequest);
+
+return true;
 }
 
 export function getUploadUrl(todoId: string): string {
